@@ -48,3 +48,10 @@ graph TD
 
 - `data/agency/agency_data.db`: Structured housing data
 - `data/wiki/`: Scraped wiki pages for contextual information
+
+## TODO
+
+- [ ] Implement fuzzy name matching for estate/district names (handle typos like "Lohus Park" → "Lohas Park", abbreviations like "TKO" → "Tseung Kwan O")
+- [ ] Add database-driven name resolution with common misspellings/abbreviations table
+- [ ] Implement LLM-powered name resolution as fallback for ambiguous cases
+- [ ] Add user feedback loop for ambiguous name suggestions

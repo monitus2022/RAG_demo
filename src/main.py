@@ -4,6 +4,7 @@ sys.path.append(os.path.dirname(__file__))
 
 from graph.graph import create_graph
 from agents.sql_agent import get_sql_agent
+from agents.sql_agent_components import IntentParser, SchemaValidator, QueryGenerator
 
 def main():
     # Initialize the Langgraph

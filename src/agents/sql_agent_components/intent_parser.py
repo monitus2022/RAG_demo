@@ -13,33 +13,14 @@ class IntentParser:
 
     def __init__(self):
         self.llm = get_llm()
-        self.prompt_template = PromptTemplate.from_template("""
-You are an expert at analyzing housing-related questions and extracting structured information for database queries.
+        self.schema_summary = self._get_schema_summary()
+        from prompts.sql_agent_prompts import INTENT_PARSER_PROMPT
+        self.prompt_template = PromptTemplate.from_template(INTENT_PARSER_PROMPT)
 
-Given this user query about Hong Kong housing data: "{query}"
-
-Extract the following information and return it as a valid JSON object:
-
-{{
-    "tables": ["array", "of", "table", "names", "needed"],
-    "columns": ["array", "of", "column", "names", "mentioned"],
-    "filters": ["array", "of", "filter", "conditions", "like", "estate_name_en = 'Lohas Park'"],
-    "aggregation": "aggregation function needed (avg, sum, count, max, min, or null if none)",
-    "group_by": ["array", "of", "columns", "to", "group", "by", "or", "empty", "array"],
-    "order_by": ["array", "of", "columns", "to", "order", "by", "or", "empty", "array"],
-    "limit": "number for LIMIT clause or null if none"
-}}
-
-Guidelines:
-- Tables should be actual table names from the database schema (estates, buildings, transactions, etc.)
-- Columns should be actual column names (estate_name_en, price, area, etc.)
-- Filters should be in SQL-like syntax but don't include table prefixes yet
-- Aggregation should be the function name in lowercase or null
-- Be specific and accurate - don't guess table/column names
-- If something is not mentioned, use empty arrays or null
-
-Return only the JSON object, no additional text.
-""")
+    def _get_schema_summary(self) -> str:
+        """Get a summary of the database schema for the LLM"""
+        from prompts.sql_agent_prompts import SCHEMA_SUMMARY
+        return SCHEMA_SUMMARY
 
     def parse(self, query: str, timeout: int = 10) -> Optional[Dict[str, Any]]:
         """
@@ -61,7 +42,7 @@ Return only the JSON object, no additional text.
                 chain = self.prompt_template | self.llm | StrOutputParser()
 
                 # Invoke the chain
-                response = await chain.ainvoke({"query": query})
+                response = await chain.ainvoke({"query": query, "schema_summary": self.schema_summary})
                 return response
 
             # Run with timeout
@@ -105,27 +86,3 @@ Return only the JSON object, no additional text.
                 pass
 
         return None
-
-# Test function
-def test_intent_parser():
-    """Test the intent parser with sample queries"""
-    parser = IntentParser()
-
-    test_queries = [
-        "What is the average price of transactions in Lohas Park?",
-        "Show me all estates in Kowloon",
-        "How many buildings are in Tseung Kwan O?",
-        "What are the most expensive transactions?",
-        "List estates with swimming pools"
-    ]
-
-    for query in test_queries:
-        print(f"\nQuery: {query}")
-        intent = parser.parse(query)
-        if intent:
-            print(f"Intent: {json.dumps(intent, indent=2)}")
-        else:
-            print("Failed to parse intent")
-
-if __name__ == "__main__":
-    test_intent_parser()
