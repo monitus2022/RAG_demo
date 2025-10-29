@@ -15,13 +15,27 @@ A Langchain-based chatbot for Hong Kong housing estates information using RAG an
    - RAG Agent: Retrieves from wiki text corpus
 6. **Response**: Summarizes and returns comprehensive answers
 
+## Development Flow
+
+```mermaid
+graph TD
+    A[Start Development] --> B[Implement SQL Agent]
+    A --> C[Implement RAG Agent]
+    B --> D[Test SQL Agent Independently]
+    C --> E[Test RAG Agent Independently]
+    D --> F[Implement Query Router]
+    E --> F
+    F --> G[Implement Summarizer]
+    G --> H[Test Full Orchestrator]
+    H --> I[Refine and Iterate]
+```
+
 ## Setup Steps
 
 1. Install dependencies: `pip install -r requirements.txt`
 2. Configure environment: Copy `.env.template` to `.env` and fill in values
 3. Ensure Ollama is running locally with required model
-4. Run tests: `python src/test_ollama.py`
-5. Start development: `python src/main.py`
+4. Start development: `python src/main.py`
 
 ## Configuration
 
