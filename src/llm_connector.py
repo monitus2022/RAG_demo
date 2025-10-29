@@ -1,6 +1,6 @@
 from langchain_ollama import OllamaLLM
 from langchain_openai import ChatOpenAI
-from config import Config
+from config.settings import Config
 
 # Initialize LLM connectors for different providers
 def get_ollama_llm(model_name: str = None):
