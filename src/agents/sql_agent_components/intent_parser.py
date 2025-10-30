@@ -19,8 +19,8 @@ class IntentParser:
 
     def _get_schema_summary(self) -> str:
         """Get a summary of the database schema for the LLM"""
-        from prompts.sql_agent_prompts import SCHEMA_SUMMARY
-        return SCHEMA_SUMMARY
+        from prompts.sql_agent_prompts import get_dynamic_schema_summary
+        return get_dynamic_schema_summary()
 
     def parse(self, query: str, timeout: int = 10) -> Optional[Dict[str, Any]]:
         """

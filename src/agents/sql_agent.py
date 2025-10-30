@@ -124,10 +124,10 @@ def get_sql_agent() -> SQLAgent:
         sql_agent = SQLAgent()
     return sql_agent
 
-# LangGraph-compatible function for SQL agent node
+# LangGraph-compatible function for SQL agent node using custom pipeline
 def sql_agent_node(state: Dict[str, Any]) -> Dict[str, Any]:
     """
-    LangGraph node function for SQL agent processing
+    LangGraph node function for SQL agent processing using custom component pipeline
 
     Args:
         state: Current graph state with user_query and other fields
@@ -140,7 +140,67 @@ def sql_agent_node(state: Dict[str, Any]) -> Dict[str, Any]:
         logger.warning("No user query provided to SQL agent")
         return {"sql_result": None}
 
-    agent = get_sql_agent()
-    result = agent.query(user_query)
+    try:
+        # Import components
+        from sql_agent_components.intent_parser import IntentParser
+        from sql_agent_components.schema_validator import SchemaValidator
+        from sql_agent_components.query_generator import QueryGenerator
+        from sql_agent_components.query_validator import QueryValidator
+        from sql_agent_components.query_executor import QueryExecutor
+        from sql_agent_components.result_formatter import ResultFormatter
+        from config.settings import Config
 
-    return {"sql_result": result}
+        logger.info(f"Processing SQL query: {user_query}")
+
+        # Step 1: Parse Intent
+        intent_parser = IntentParser()
+        intent = intent_parser.parse(user_query)
+        if not intent:
+            error_msg = "Failed to parse query intent"
+            logger.error(error_msg)
+            return {"sql_result": error_msg}
+
+        # Step 2: Validate Schema
+        schema_validator = SchemaValidator()
+        validation_result = schema_validator.validate_intent(intent)
+        if not validation_result['valid']:
+            error_msg = f"Schema validation failed: {', '.join(validation_result['errors'])}"
+            logger.error(error_msg)
+            return {"sql_result": error_msg}
+
+        # Step 3: Generate Query
+        query_generator = QueryGenerator()
+        sql_query = query_generator.generate_query(intent, validation_result['schema_info'])
+        if not sql_query:
+            error_msg = "Failed to generate SQL query"
+            logger.error(error_msg)
+            return {"sql_result": error_msg}
+
+        # Step 4: Validate Query
+        query_validator = QueryValidator(Config.DATABASE_PATH)
+        query_validation = query_validator.validate_query(sql_query)
+        if not query_validation['valid']:
+            error_msg = f"Query validation failed: {', '.join(query_validation['errors'])}"
+            logger.error(error_msg)
+            return {"sql_result": error_msg}
+
+        # Step 5: Execute Query
+        query_executor = QueryExecutor(Config.DATABASE_PATH)
+        execution_result = query_executor.execute_read_query(sql_query)
+        if not execution_result['success']:
+            error_msg = f"Query execution failed: {execution_result.get('error', 'Unknown error')}"
+            logger.error(error_msg)
+            return {"sql_result": error_msg}
+
+        # Step 6: Format Results
+        result_formatter = ResultFormatter()
+        formatted_result = result_formatter.format_results(execution_result, user_query)
+
+        final_result = formatted_result.get('display_text', 'No results to display')
+        logger.info(f"SQL agent processing completed successfully")
+        return {"sql_result": final_result}
+
+    except Exception as e:
+        error_msg = f"SQL agent processing failed: {str(e)}"
+        logger.error(error_msg)
+        return {"sql_result": error_msg}
