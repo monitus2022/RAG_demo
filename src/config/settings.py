@@ -21,6 +21,7 @@ class Config:
     # ChromaDB Configuration
     CHROMA_DB_PATH = os.getenv("CHROMA_DB_PATH", "data/chroma_db")
     WIKI_DATA_PATH = os.getenv("WIKI_DATA_PATH", "data/wiki")
+    EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "paraphrase-multilingual-MiniLM-L12-v2")
 
     # Other Settings
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")

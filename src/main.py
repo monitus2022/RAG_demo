@@ -15,7 +15,7 @@ def main():
         logger.info("LangGraph framework initialized successfully.")
 
         # Interactive chat loop
-        print("\n🤖 RAG Demo Chatbot with LangGraph")
+        print("\nRAG Demo Chatbot with LangGraph")
         print("Type 'quit' or 'exit' to end the conversation")
         print("-" * 50)
 
@@ -25,7 +25,7 @@ def main():
                 user_query = input("\nYou: ").strip()
 
                 if user_query.lower() in ['quit', 'exit', 'q']:
-                    print("Goodbye! 👋")
+                    print("Goodbye!")
                     break
 
                 if not user_query:
@@ -45,16 +45,16 @@ def main():
                 logger.info(f"Query processed successfully: {user_query[:50]}...")
 
             except KeyboardInterrupt:
-                print("\n\nGoodbye! 👋")
+                print("\n\nGoodbye!")
                 break
             except Exception as e:
                 logger.error(f"Error processing query: {e}")
-                print(f"\n❌ Error: {str(e)}")
+                print(f"\nError: {str(e)}")
                 print("Please try again.")
 
     except Exception as e:
         logger.error(f"Failed to initialize application: {e}")
-        print(f"❌ Failed to start application: {str(e)}")
+        print(f"Failed to start application: {str(e)}")
         sys.exit(1)
 
 def test_langgraph():
@@ -76,11 +76,11 @@ def test_langgraph():
             result = graph.invoke({"user_query": query})
             print(f"Result: {result.get('final_response', 'No response')}")
 
-        print("\n✅ LangGraph tests completed successfully!")
+        print("\nLangGraph tests completed successfully!")
 
     except Exception as e:
         logger.error(f"LangGraph test failed: {e}")
-        print(f"❌ LangGraph test failed: {str(e)}")
+        print(f"LangGraph test failed: {str(e)}")
 
 # Example usage
 if __name__ == "__main__":

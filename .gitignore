@@ -5,3 +5,4 @@ chroma*/
 data/
 .env
 logs/
+.DS_Store

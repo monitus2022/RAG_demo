@@ -2,42 +2,87 @@ from langgraph.graph import StateGraph, START, END
 from typing import TypedDict, Optional
 from llm_connector import get_llm
 from agents.sql_agent import sql_agent_node
+from agents.rag_agent import rag_agent_node
 
 # Define the state for the graph
 class ChatState(TypedDict):
     user_query: str
+    routes: Optional[list]
     sql_result: Optional[str]
     rag_result: Optional[str]
     final_response: Optional[str]
 
 def query_router(state: ChatState) -> ChatState:
-    """Route query to appropriate agent based on content"""
-    user_query = state.get("user_query", "").lower()
+    """Route query to appropriate agent(s) using LLM-based classification"""
+    user_query = state.get("user_query", "")
 
-    # Simple routing logic - can be enhanced with LLM-based routing
-    sql_keywords = ['price', 'average', 'count', 'sum', 'transaction', 'estate', 'building', 'unit']
-    rag_keywords = ['what is', 'explain', 'about', 'definition', 'history']
+    # Get LLM for routing decision
+    llm = get_llm()
 
-    has_sql_keywords = any(keyword in user_query for keyword in sql_keywords)
-    has_rag_keywords = any(keyword in user_query for keyword in rag_keywords)
+    # Import routing prompt
+    from prompts.routing_prompts import ROUTING_PROMPT
 
-    if has_sql_keywords and not has_rag_keywords:
-        return {**state, "route": "sql_agent"}
-    elif has_rag_keywords and not has_sql_keywords:
-        return {**state, "route": "rag_agent"}
-    else:
-        # Default to SQL for now, can be enhanced
-        return {**state, "route": "sql_agent"}
+    # Format prompt with user query
+    routing_prompt = ROUTING_PROMPT.format(user_query=user_query)
+
+    try:
+        # Get routing decision from LLM
+        response = llm.invoke(routing_prompt).strip().upper()
+
+        # Determine routes based on response
+        if response == "BOTH":
+            routes = ["sql_agent", "rag_agent"]
+        elif response == "SINGLE_SQL":
+            routes = ["sql_agent"]
+        elif response == "SINGLE_RAG":
+            routes = ["rag_agent"]
+        else:
+            # Fallback to keyword-based routing
+            sql_keywords = ['price', 'average', 'count', 'sum', 'transaction', 'estate', 'building', 'unit', 'address', 'location', 'statistics', 'data']
+            rag_keywords = ['what is', 'explain', 'about', 'definition', 'history', 'how', 'why', 'background', 'context']
+
+            has_sql_keywords = any(keyword in user_query.lower() for keyword in sql_keywords)
+            has_rag_keywords = any(keyword in user_query.lower() for keyword in rag_keywords)
+
+            if has_sql_keywords and has_rag_keywords:
+                routes = ["sql_agent", "rag_agent"]  # Both keywords present
+            elif has_sql_keywords:
+                routes = ["sql_agent"]
+            elif has_rag_keywords:
+                routes = ["rag_agent"]
+            else:
+                routes = ["sql_agent"]  # Default fallback
+
+        return {**state, "routes": routes}
+
+    except Exception as e:
+        # If LLM routing fails, use keyword fallback
+        sql_keywords = ['price', 'average', 'count', 'sum', 'transaction', 'estate', 'building', 'unit', 'address', 'location', 'statistics', 'data']
+        rag_keywords = ['what is', 'explain', 'about', 'definition', 'history', 'how', 'why', 'background', 'context']
+
+        has_sql_keywords = any(keyword in user_query.lower() for keyword in sql_keywords)
+        has_rag_keywords = any(keyword in user_query.lower() for keyword in rag_keywords)
+
+        if has_sql_keywords and has_rag_keywords:
+            routes = ["sql_agent", "rag_agent"]
+        elif has_sql_keywords:
+            routes = ["sql_agent"]
+        elif has_rag_keywords:
+            routes = ["rag_agent"]
+        else:
+            routes = ["sql_agent"]
+
+        return {**state, "routes": routes}
 
 def sql_agent(state: ChatState) -> ChatState:
     """SQL agent node using custom pipeline"""
     result = sql_agent_node(state)
-    return {**state, **result}
+    return result
 
 def rag_agent(state: ChatState) -> ChatState:
-    # Placeholder: query ChromaDB for wiki text
-    # For now, return placeholder result
-    return {**state, "rag_result": "RAG functionality not yet implemented"}
+    """RAG agent node using custom pipeline"""
+    result = rag_agent_node(state)
+    return result
 
 def summarizer(state: ChatState) -> ChatState:
     """Combine results and generate final response"""
@@ -72,15 +117,24 @@ def create_graph():
     # Add edges with conditional routing
     graph.add_edge(START, "query_router")
 
-    # Conditional routing based on query_router decision
+    # Conditional routing based on query_router decision - now supports multiple routes
+    def route_to_agents(state):
+        routes = state.get("routes", ["sql_agent"])  # Default to sql_agent if no routes
+        return routes
+
+    # Add conditional edges for routing
     graph.add_conditional_edges(
         "query_router",
-        lambda result: result.get("route"),  # Extract route from state
+        route_to_agents,
         {
             "sql_agent": "sql_agent",
             "rag_agent": "rag_agent"
         }
     )
+
+    # Add edges from agents to summarizer (both can run in parallel)
+    graph.add_edge("sql_agent", "summarizer")
+    graph.add_edge("rag_agent", "summarizer")
 
     # Both agents lead to summarizer
     graph.add_edge("sql_agent", "summarizer")
